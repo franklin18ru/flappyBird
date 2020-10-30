@@ -1,12 +1,63 @@
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import random
+import json
+import itertools
 
 class FlappyAgent:
     def __init__(self):
         # TODO: you may need to do some initialization for your agent here
+        self.discount = 1.0
+        self.alpha = 0.1
+        self.epsilon = 0.1
+        self.loadQvalues()
+        self.lastAction = 0
+        self.moves = []
+        self.lastState = 0
+        self.gameCount = 0
+        self.gameDoc = {}
         return
-    
+
+    def split(self, a, n):
+            k, m = divmod(len(a), n)
+            return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+
+    def createRanges(self):
+        #Itializing ranges for qvalues and setting inital values [0,0,0]
+        first = ( list(self.split(range(-30,513), 15)) )
+        second = range(-20, 11)  
+        third = ( list(self.split(range(360), 15)) )
+        fourth = ( list(self.split(range(540), 15)))
+
+        newList = [first, second, third, fourth]
+        newList = list(itertools.product(*newList))
+
+
+        return newList
+
+    def loadQvalues(self):
+        """
+        Load q values 
+        """
+        self.qvalues = []
+        self.qkeys = self.createRanges()
+        for i in range(len(self.qkeys)):
+            self.qvalues.append([0,0,0])
+
+    def compareStates(self, state):
+        for i in range(len(self.qkeys)):
+            if state[0] in self.qkeys[i][0] and state[1] == self.qkeys[i][1] and state[2] in self.qkeys[i][2] and state[3] in self.qkeys[i][3]:
+                state = self.qkeys[i]
+                stateIndex = i
+        try: 
+            return state, stateIndex
+        except:
+            print("shitty state shitty life: ")
+            print(state)
+            with open("data/gameDoc.json", "w") as gameFile:
+                json.dump(self.gameDoc, gameFile)
+            return stateIndex
+
     def reward_values(self):
         """ returns the reward values used for training
         
@@ -15,9 +66,9 @@ class FlappyAgent:
             1 for passing through each pipe and 0 for all other state
             transitions.
         """
-        return {"positive": 1.0, "tick": 0.0, "loss": -5.0}
+        return {"positive": 1.0, "tick": 0.0, "loss": -5}
     
-    def observe(self, s1, a, r, s2, end):
+    def observe(self, s1, a, r, s2, end,):
         """ this function is called during training on each step of the game where
             the state transition is going from state s1 with action a to state s2 and
             yields the reward r. If s2 is a terminal state, end==True, otherwise end==False.
@@ -26,6 +77,14 @@ class FlappyAgent:
             subsequent steps in the same episode. That is, s1 in the second call will be s2
             from the first call.
             """
+        if(end == False):
+            self.qvalues[s1][2] += 1
+            self.qvalues[s1][a] = self.qvalues[s1][a] + self.alpha * (r + self.discount  * max(self.qvalues[s2][0:2]) - self.qvalues[s1][a])
+        else:
+            self.qvalues[s1][2] += 1
+            self.qvalues[s1][a] = self.qvalues[s1][a] + self.alpha * (r + self.discount * 0 - self.qvalues[s1][a])
+
+
         # TODO: learn from the observation
         return
 
@@ -35,10 +94,17 @@ class FlappyAgent:
 
             training_policy is called once per frame in the game while training
         """
-        print("state: %s" % state)
-        # TODO: change this to to policy the agent is supposed to use while training
-        # At the moment we just return an action uniformly at random.
-        return random.randint(0, 1) 
+        # print("state: %s" % state)
+        state, stateIndex = self.compareStates(state)
+
+
+        if random.uniform(0,1) > self.epsilon:
+            action = max(self.qvalues[stateIndex][0:2])
+             
+        else:
+            action = random.randint(0,1)
+
+        return int(action), state, stateIndex
 
     def policy(self, state):
         """ Returns the index of the action that should be done in state when training is completed.
@@ -90,7 +156,6 @@ def run_game(nb_episodes, agent):
 
 def train(nb_episodes, agent):
     reward_values = agent.reward_values()
-    
     env = PLE(FlappyBird(), fps=30, display_screen=False, force_fps=True, rng=None,
             reward_values = reward_values)
     env.init()
@@ -98,24 +163,37 @@ def train(nb_episodes, agent):
     score = 0
     while nb_episodes > 0:
         # pick an action
+        
         state = env.game.getGameState()
-        action = agent.training_policy(state)
+        formattedState = [int(state["player_y"]), int(state["player_vel"]), int(state["next_pipe_dist_to_player"]), int(state["next_pipe_top_y"])]
+        # str(state["player_y"]) + "," + str(state["player_vel"]) + "," + str(state["next_pipe_dist_to_player"]) + "," + str(state["next_pipe_top_y"])
+        action, correctState, stateIndex  = agent.training_policy(formattedState)
 
         # step the environment
         reward = env.act(env.getActionSet()[action])
-        print("reward=%d" % reward)
+        # print("reward=%d" % reward)
 
         # let the agent observe the current state transition
-        newState = env.game.getGameState()
-        agent.observe(state, action, reward, newState, env.game_over())
+
+        getNewState = env.game.getGameState()
+        newState = [int(getNewState["player_y"]), int(getNewState["player_vel"]), int(getNewState["next_pipe_dist_to_player"]), int(getNewState["next_pipe_top_y"])]
+        newState, newStateIndex = agent.compareStates(newState)
+        agent.observe(stateIndex, action, reward, newStateIndex, env.game_over())
 
         score += reward
         # reset the environment if the game is over
         if env.game_over():
             print("score for this episode: %d" % score)
+            agent.gameDoc[agent.gameCount] = score
+            agent.gameCount += 1
             env.reset_game()
             nb_episodes -= 1
             score = 0
+            agent.lastState = 0
+
+        if nb_episodes == 0:
+            with open("data/gameDoc.json", "w") as gameFile:
+                json.dump(agent.gameDoc, gameFile)
 
 agent = FlappyAgent()
-train(3, agent)
+train(5000, agent)
