@@ -33,6 +33,8 @@ class FlappyAgent:
             from the first call.
             """
         # TODO: learn from the observation
+        # 1-epsilon+epsilon/abs(A(s)) a = A*
+        # epsilon/abs(A(s)) a != A*
         return
 
     def training_policy(self, state):
