@@ -51,9 +51,9 @@ class FlappyAgent:
             if state[0] in self.qkeys[i][0] and state[1] == self.qkeys[i][1] and state[2] in self.qkeys[i][2] and state[3] in self.qkeys[i][3]:
                 state = self.qkeys[i]
                 stateIndex = i
+                break
         
-        testIndex = self.qkeys.index(state)
-        print(testIndex)
+
 
         try: 
             return state, stateIndex
