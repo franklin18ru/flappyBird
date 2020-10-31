@@ -4,6 +4,11 @@ import random
 import json
 import itertools
 
+# For Learning curve plot
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import learning_curve
+
 class FlappyAgent:
     def __init__(self):
         # TODO: you may need to do some initialization for your agent here
@@ -16,6 +21,7 @@ class FlappyAgent:
         self.lastState = 0
         self.gameCount = 0
         self.gameDoc = {}
+        self.score = 0
         return
 
     def split(self, a, n):
@@ -49,6 +55,10 @@ class FlappyAgent:
             if state[0] in self.qkeys[i][0] and state[1] == self.qkeys[i][1] and state[2] in self.qkeys[i][2] and state[3] in self.qkeys[i][3]:
                 state = self.qkeys[i]
                 stateIndex = i
+        
+        testIndex = self.qkeys.index(state)
+        print(testIndex)
+
         try: 
             return state, stateIndex
         except:
@@ -99,7 +109,8 @@ class FlappyAgent:
 
 
         if random.uniform(0,1) > self.epsilon:
-            action = max(self.qvalues[stateIndex][0:2])
+            exploit = self.qvalues[stateIndex].index(max(self.qvalues[stateIndex][0:2]))
+            action = exploit
              
         else:
             action = random.randint(0,1)
@@ -181,6 +192,7 @@ def train(nb_episodes, agent):
         agent.observe(stateIndex, action, reward, newStateIndex, env.game_over())
 
         score += reward
+        agent.score += reward
         # reset the environment if the game is over
         if env.game_over():
             print("score for this episode: %d" % score)
@@ -191,9 +203,39 @@ def train(nb_episodes, agent):
             score = 0
             agent.lastState = 0
 
-        if nb_episodes == 0:
-            with open("data/gameDoc.json", "w") as gameFile:
-                json.dump(agent.gameDoc, gameFile)
+        # if nb_episodes == 0:
+        #     with open("data/gameDoc.json", "w") as gameFile:
+        #         json.dump(agent.gameDoc, gameFile)
+
+
+
+
 
 agent = FlappyAgent()
-train(5000, agent)
+# train(5000, agent)
+episodes = [1000,1000,1000,1000,1000,1000]
+# episodes = [1,1,1,1,1,1]
+
+# x = [1,2,3,4,5,6]
+x = [1000,2000,3000,4000,5000,6000]
+y = []
+
+
+for episode in episodes:
+    train(episode, agent)
+    y.append(agent.score)
+
+
+
+
+title = r"Learning Curve (Q-Learning,  $\alpha=0.1$,  $\epsilon=0.1$,  $\gamma=1.0$)"
+yMinimum = max(y)
+yMaximum = min(y)
+
+plt.plot(x,y)
+plt.xlabel('Episodes')
+plt.ylabel('Score')
+plt.title(title)
+
+
+plt.show()
