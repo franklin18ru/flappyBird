@@ -55,9 +55,9 @@ class FlappyAgent:
             if state[0] in self.qkeys[i][0] and state[1] == self.qkeys[i][1] and state[2] in self.qkeys[i][2] and state[3] in self.qkeys[i][3]:
                 state = self.qkeys[i]
                 stateIndex = i
+                break
         
-        testIndex = self.qkeys.index(state)
-        print(testIndex)
+        
 
         try: 
             return state, stateIndex
@@ -213,11 +213,11 @@ def train(nb_episodes, agent):
 
 agent = FlappyAgent()
 # train(5000, agent)
-episodes = [1000,1000,1000,1000,1000,1000]
-# episodes = [1,1,1,1,1,1]
+# episodes = [1000,1000,1000,1000,1000,1000]
+episodes = [1,1,1,1,1,1]
 
-# x = [1,2,3,4,5,6]
-x = [1000,2000,3000,4000,5000,6000]
+x = [1,2,3,4,5,6]
+# x = [1000,2000,3000,4000,5000,6000]
 y = []
 
 
