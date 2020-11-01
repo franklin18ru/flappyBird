@@ -5,9 +5,7 @@ import json
 import itertools
 
 # For Learning curve plot
-import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import learning_curve
 
 class FlappyAgent:
     def __init__(self):
@@ -213,11 +211,11 @@ def train(nb_episodes, agent):
 
 agent = FlappyAgent()
 # train(5000, agent)
-# episodes = [1000,1000,1000,1000,1000,1000]
-episodes = [1,1,1,1,1,1]
+episodes = [500,500,500,500,500,500,500,500,500,500,500,500]
+# episodes = [1,1,1,1,1,1]
 
-x = [1,2,3,4,5,6]
-# x = [1000,2000,3000,4000,5000,6000]
+# x = [1,2,3,4,5,6]
+x = [500,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000]
 y = []
 
 

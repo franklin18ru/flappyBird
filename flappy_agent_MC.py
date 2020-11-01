@@ -4,6 +4,8 @@ import random
 import json
 import itertools
 
+# For Learning curve plot
+import matplotlib.pyplot as plt
 
 class FlappyAgent:
     def __init__(self):
@@ -17,6 +19,8 @@ class FlappyAgent:
         self.lastState = 0
         self.gameCount = 0
         self.gameDoc = {}
+        self.score = 0
+        self.ep = 0
         return
 
 
@@ -168,7 +172,7 @@ def run_game(nb_episodes, agent):
         
         # reset the environment if the game is over
         if env.game_over():
-            print("score for this episode: %d" % score)
+            # print("score for this episode(%d): %d" % nb_episodes,score)
             env.reset_game()
             nb_episodes -= 1
             score = 0
@@ -176,7 +180,7 @@ def run_game(nb_episodes, agent):
 def train(nb_episodes, agent):
     reward_values = agent.reward_values()
     
-    env = PLE(FlappyBird(), fps=30, display_screen=True, force_fps=True, rng=None,
+    env = PLE(FlappyBird(), fps=30, display_screen=False, force_fps=True, rng=None,
             reward_values = reward_values)
     env.init()
 
@@ -190,16 +194,18 @@ def train(nb_episodes, agent):
 
         # step the environment
         reward = env.act(env.getActionSet()[action])
-        print("reward=%d" % reward)
+        # print("reward=%d" % reward)
 
         # let the agent observe the current state transition
         getNewState = env.game.getGameState()
         agent.observe(stateIndex, action, reward, getNewState, env.game_over())
 
         score += reward
+        agent.score += reward
         # reset the environment if the game is over
         if env.game_over():
-            print("score for this episode: %d" % score)
+            agent.ep += 1
+            print("score for this episode({}): {}".format(agent.ep,score))
             env.reset_game()
             nb_episodes -= 1
             score = 0
@@ -212,11 +218,11 @@ def train(nb_episodes, agent):
 
 agent = FlappyAgent()
 # train(5000, agent)
-episodes = [1000,1000,1000,1000,1000,1000]
+episodes = [500,500,500,500,500,500,500,500,500,500,500,500]
 # episodes = [1,1,1,1,1,1]
 
 # x = [1,2,3,4,5,6]
-x = [1000,2000,3000,4000,5000,6000]
+x = [500,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000]
 y = []
 
 
