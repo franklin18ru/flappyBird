@@ -5,6 +5,7 @@ import json
 import itertools
 
 # For Learning curve plot
+import numpy as np
 import matplotlib.pyplot as plt
 
 class FlappyAgent:
@@ -20,9 +21,8 @@ class FlappyAgent:
         self.gameCount = 0
         self.gameDoc = {}
         self.score = 0
-        self.ep = 0
+        self.omega = 0
         return
-
 
     def split(self, a, n):
             k, m = divmod(len(a), n)
@@ -48,7 +48,7 @@ class FlappyAgent:
         self.qvalues = []
         self.qkeys = self.createRanges()
         for i in range(len(self.qkeys)):
-            self.qvalues.append([0,0,0])
+            self.qvalues.append([0,0,0,0,0])
 
     def compareStates(self, state):
         for i in range(len(self.qkeys)):
@@ -57,7 +57,7 @@ class FlappyAgent:
                 stateIndex = i
                 break
         
-
+        
 
         try: 
             return state, stateIndex
@@ -68,8 +68,6 @@ class FlappyAgent:
                 json.dump(self.gameDoc, gameFile)
             return stateIndex
 
-    
-    
     def reward_values(self):
         """ returns the reward values used for training
         
@@ -78,7 +76,7 @@ class FlappyAgent:
             1 for passing through each pipe and 0 for all other state
             transitions.
         """
-        return {"positive": 1.0, "tick": 0.0, "loss": -5.0}
+        return {"positive": 1.0, "tick": 0.0, "loss": -5}
     
     def observe(self, s1, a, r, s2, end):
         """ this function is called during training on each step of the game where
@@ -89,24 +87,19 @@ class FlappyAgent:
             subsequent steps in the same episode. That is, s1 in the second call will be s2
             from the first call.
             """
+            # 1:07:00
+        if(end == False):
+            self.qvalues[s1][4] += 1
+            self.qvalues[s1][a] = self.qvalues[s1][a] + self.alpha * (r + self.discount * max(self.qvalues[s2][0:2]) - self.qvalues[s1][a])
+            self.qvalues[s1][a+2] = self.qvalues[s1][a+2] + self.alpha * (r + self.discount * self.qvalues[s2][a+2] - self.qvalues[s1][a+2]) * "something" # Omega
+        else:
+            self.qvalues[s1][4] += 1
+            self.qvalues[s1][a] = self.qvalues[s1][a] + self.alpha * (r + self.discount * 0 - self.qvalues[s1][a])
+            self.qvalues[s1][a+2] = self.qvalues[s1][a+2] + self.alpha * (r + self.discount * 0 - self.qvalues[s1][a+2])  * "something"  # Omega
+
+
         # TODO: learn from the observation
-        # 1-epsilon+epsilon/abs(A(s)) a = A*
-        # epsilon/abs(A(s)) a != A*
-
-        self.qvalues[s1][2] += 1
-        if end == False:
-            if self.qvalues[s1][a] == 0:
-                self.qvalues[s1][a] = (1-self.epsilon) 
-            else:
-                self.qvalues[s1][a] = (1-self.epsilon)+(self.epsilon/abs( self.qvalues[s1][a] ))
-
-            if a == 0:
-                if self.qvalues[s1][1] != 0:
-                    self.qvalues[s1][1] = self.epsilon/abs( self.qvalues[s1][1] )
-            else:
-                if self.qvalues[s1][0] != 0:
-                    self.qvalues[s1][0] = self.epsilon/abs( self.qvalues[s1][0] )
-
+        return
 
     def training_policy(self, state):
         """ Returns the index of the action that should be done in state while training the agent.
@@ -115,14 +108,17 @@ class FlappyAgent:
             training_policy is called once per frame in the game while training
         """
         # print("state: %s" % state)
-        # TODO: change this to to policy the agent is supposed to use while training
-        # At the moment we just return an action uniformly at random.
+
+        vector = np.array(state)
+        self.omega = (np.square(vector)).mean(axis=None)
+        print(self.omega)
+
         state, stateIndex = self.compareStates(state)
 
 
         if random.uniform(0,1) > self.epsilon:
-            exploit = self.qvalues[stateIndex].index(max(self.qvalues[stateIndex][0:2]))
-            action = exploit
+            exploit = self.qvalues[stateIndex].index(max(self.qvalues[stateIndex][2:4]))
+            action = exploit-2
              
         else:
             action = random.randint(0,1)
@@ -146,9 +142,9 @@ def run_game(nb_episodes, agent):
         An episode of FlappyBird ends with the bird crashing into a pipe or going off screen.
     """
 
-    # reward_values = {"positive": 1.0, "negative": 0.0, "tick": 0.0, "loss": 0.0, "win": 0.0}
+    reward_values = {"positive": 1.0, "negative": 0.0, "tick": 0.0, "loss": 0.0, "win": 0.0}
     # TODO: when training use the following instead:
-    reward_values = agent.reward_values()
+    # reward_values = agent.reward_values
     
     env = PLE(FlappyBird(), fps=30, display_screen=True, force_fps=False, rng=None,
             reward_values = reward_values)
@@ -160,28 +156,25 @@ def run_game(nb_episodes, agent):
     while nb_episodes > 0:
         # pick an action
         # TODO: for training using agent.training_policy instead
-        action = agent.training_policy(env.game.getGameState())
-        # action = agent.policy(env.game.getGameState())
+        action = agent.policy(env.game.getGameState())
 
         # step the environment
         reward = env.act(env.getActionSet()[action])
         print("reward=%d" % reward)
 
         # TODO: for training let the agent observe the current state transition
-        print(env.game.getGameState())
 
         score += reward
         
         # reset the environment if the game is over
         if env.game_over():
-            # print("score for this episode(%d): %d" % nb_episodes,score)
+            print("score for this episode: %d" % score)
             env.reset_game()
             nb_episodes -= 1
             score = 0
 
 def train(nb_episodes, agent):
     reward_values = agent.reward_values()
-    
     env = PLE(FlappyBird(), fps=30, display_screen=False, force_fps=True, rng=None,
             reward_values = reward_values)
     env.init()
@@ -189,6 +182,7 @@ def train(nb_episodes, agent):
     score = 0
     while nb_episodes > 0:
         # pick an action
+        
         state = env.game.getGameState()
         formattedState = [int(state["player_y"]), int(state["player_vel"]), int(state["next_pipe_dist_to_player"]), int(state["next_pipe_top_y"])]
         # str(state["player_y"]) + "," + str(state["player_vel"]) + "," + str(state["next_pipe_dist_to_player"]) + "," + str(state["next_pipe_top_y"])
@@ -199,22 +193,29 @@ def train(nb_episodes, agent):
         # print("reward=%d" % reward)
 
         # let the agent observe the current state transition
+
         getNewState = env.game.getGameState()
-        agent.observe(stateIndex, action, reward, getNewState, env.game_over())
+        newState = [int(getNewState["player_y"]), int(getNewState["player_vel"]), int(getNewState["next_pipe_dist_to_player"]), int(getNewState["next_pipe_top_y"])]
+        newState, newStateIndex = agent.compareStates(newState)
+        agent.observe(stateIndex, action, reward, newStateIndex, env.game_over())
 
         score += reward
         agent.score += reward
         # reset the environment if the game is over
         if env.game_over():
-            agent.ep += 1
-            print("score for this episode({}): {}".format(agent.ep,score))
+            print("score for this episode: %d" % score)
+            agent.gameDoc[agent.gameCount] = score
+            agent.gameCount += 1
             env.reset_game()
             nb_episodes -= 1
             score = 0
+            agent.lastState = 0
 
         # if nb_episodes == 0:
         #     with open("data/gameDoc.json", "w") as gameFile:
         #         json.dump(agent.gameDoc, gameFile)
+
+
 
 
 
@@ -235,7 +236,7 @@ for episode in episodes:
 
 
 
-title = r"Learning Curve (On-policy MC,  $\alpha=0.1$,  $\epsilon=0.1$,  $\gamma=1.0$)"
+title = r"Learning Curve (Q-Learning,  $\alpha=0.1$,  $\epsilon=0.1$,  $\gamma=1.0$)"
 yMinimum = max(y)
 yMaximum = min(y)
 
