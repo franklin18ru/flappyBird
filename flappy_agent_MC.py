@@ -96,14 +96,16 @@ class FlappyAgent:
         self.qvalues[s1][2] += 1
 
         if self.qvalues[s1][a] == 0:
-            self.qvalues[s1][a] = (1-self.epsilon)
-            
+            self.qvalues[s1][a] = (1-self.epsilon) 
         else:
             self.qvalues[s1][a] = (1-self.epsilon)+(self.epsilon/abs( self.qvalues[s1][a] ))
-            if a == 0:
-                self.qvalues[s1][1] = self.epsilon/abs( self.qvalues[s1][a] )
-            else:
-                self.qvalues[s1][0] = self.epsilon/abs( self.qvalues[s1][a] )
+
+        if a == 0:
+            if self.qvalues[s1][1] != 0:
+                self.qvalues[s1][1] = self.epsilon/abs( self.qvalues[s1][1] )
+        else:
+            if self.qvalues[s1][0] != 0:
+                self.qvalues[s1][0] = self.epsilon/abs( self.qvalues[s1][0] )
 
 
     def training_policy(self, state):
