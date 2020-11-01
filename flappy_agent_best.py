@@ -13,7 +13,7 @@ class FlappyAgent:
     def __init__(self):
         # TODO: you may need to do some initialization for your agent here
         self.discount = 1.0
-        self.alpha = 0.1
+        self.alpha = 0.7
         self.epsilon = 0.1
         self.loadQvalues()
         self.lastAction = 0
@@ -22,6 +22,7 @@ class FlappyAgent:
         self.gameCount = 0
         self.gameDoc = {}
         self.score = 0
+        self.ticks = 0
         return
 
     def split(self, a, n):
@@ -31,19 +32,17 @@ class FlappyAgent:
     def createRanges(self):
         #Itializing ranges for qvalues and setting inital values [0,0,0]
         first = (list(self.split(range(-30,513), 15)))
-        second = range(-20, 11)  
+        second = range(-8, 11)  
         third = (list(self.split(range(360), 15)))
         fourth = ( list(self.split(range(540), 15)))
-
         newList = [first, second, third, fourth]
         newList = list(itertools.product(*newList))
-
-
+        
         return newList
 
     def loadQvalues(self):
         """
-        Load q values 
+        Load q values from file if exists, if not then start new training
         """
         self.qvalues = []
         self.qkeys = self.createRanges()
@@ -55,21 +54,19 @@ class FlappyAgent:
                 self.qvalues.append([0,0,0])
 
     def compareStates(self, state):
+        if state[1] < -8:
+            state[1] == -8
         for i in range(len(self.qkeys)):
             if state[0] in self.qkeys[i][0] and state[1] == self.qkeys[i][1] and state[2] in self.qkeys[i][2] and state[3] in self.qkeys[i][3]:
                 state = self.qkeys[i]
                 stateIndex = i
                 break
-        
-        
 
         try: 
             return state, stateIndex
         except:
             print("shitty state shitty life: ")
             print(state)
-            with open("data/gameDoc.json", "w") as gameFile:
-                json.dump(self.gameDoc, gameFile)
             return stateIndex
 
     def reward_values(self):
@@ -110,6 +107,7 @@ class FlappyAgent:
             training_policy is called once per frame in the game while training
         """
         # print("state: %s" % state)
+        self.ticks += 1
         state, stateIndex = self.compareStates(state)
 
 
@@ -177,7 +175,6 @@ def train(nb_episodes, agent):
     score = 0
     while nb_episodes > 0:
         # pick an action
-        
         state = env.game.getGameState()
         formattedState = [int(state["player_y"]), int(state["player_vel"]), int(state["next_pipe_dist_to_player"]), int(state["next_pipe_top_y"])]
         
@@ -199,15 +196,13 @@ def train(nb_episodes, agent):
 
         score += reward
         agent.score += reward
+        if agent.ticks == 1000000:
+            nb_episodes = 0
         # reset the environment if the game is overs
         if env.game_over():
             print("score for this episode: %d" % score)
             env.reset_game()
             nb_episodes -= 1
-            if score >= 50:
-                saveScore = [score]
-                with open('data/score.json', 'w') as scoreFile:
-                    json.dump(saveScore, scoreFile)
             score = 0
             agent.lastState = 0
 
@@ -223,9 +218,9 @@ def train(nb_episodes, agent):
 agent = FlappyAgent()
 # train(5000, agent)
 # episodes = [1000,1000,1000,1000,1000,1000]
-episodes = [200,200,200,200,200,200]
+episodes = [500,500,500,500,500,500]
 
-x = [200,400,600,800,1000,1200]
+x = [500,1000,1500,2000,2500,3000]
 # x = [1000,2000,3000,4000,5000,6000]
 y = []
 
